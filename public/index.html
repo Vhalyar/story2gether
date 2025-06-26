@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Story2gether</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    .box { border: 1px solid #ccc; margin: 10px 0; padding: 10px; min-height: 50px; width: 80%; }
+    .writing { font-style: italic; color: gray; }
+    .button { margin: 10px; padding: 10px; cursor: pointer; }
+    #storyContainer { max-height: 60vh; overflow-y: auto; border: 1px solid #ddd; padding: 10px; }
+  </style>
+</head>
+<body>
+  <div id="nameInput">
+    <input type="text" id="playerName" placeholder="Enter your name"/>
+    <button onclick="setName()">Confirm</button>
+  </div>
+
+  <div id="lobby" style="display:none">
+    <h3>Lobby</h3>
+    <div id="players"></div>
+    <button onclick="toggleReady()" id="readyBtn">READY</button>
+  </div>
+
+  <div id="game" style="display:none">
+    <h3>Story</h3>
+    <div id="storyContainer"></div>
+    <textarea id="inputBox" style="width:80%;height:50px;"></textarea>
+    <button onclick="submitText()">Submit</button>
+    <button onclick="voteToEnd()">Vote to End</button>
+    <div id="voteButtons" style="display:none;">
+      <button onclick="castVote('agree')">AGREE</button>
+      <button onclick="castVote('disagree')">DISAGREE</button>
+    </div>
+  </div>
+
+  <div id="finalStory" style="display:none">
+    <h3>Final Story</h3>
+    <ul id="storyList"></ul>
+    <button onclick="restartGame()">Restart Game</button>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    let myId = null;
+    let myTurnIndex = null;
+    let currentTurn = 0;
+    let currentBoxIndex = 0;
+
+    function setName() {
+      const name = document.getElementById("playerName").value;
+      if (name) socket.emit("setName", name);
+    }
+
+    socket.on("playerData", (data) => {
+      myId = data.id;
+      myTurnIndex = data.turnIndex;
+      document.getElementById("nameInput").style.display = "none";
+      document.getElementById("lobby").style.display = "block";
+    });
+
+    socket.on("playersUpdate", (players) => {
+      document.getElementById("players").innerHTML = players.map(p => {
+        return `<div style="color:${p.color}">${p.name} ${p.ready ? '(Ready)' : ''}</div>`;
+      }).join("");
+    });
+
+    function toggleReady() {
+      const btn = document.getElementById("readyBtn");
+      const status = btn.innerText !== "UNREADY";
+      btn.innerText = status ? "UNREADY" : "READY";
+      socket.emit("readyStatus", status);
+    }
+
+    socket.on("gameStart", ({ players, turnIndex, currentBoxIndex: box }) => {
+      document.getElementById("lobby").style.display = "none";
+      document.getElementById("game").style.display = "block";
+      currentTurn = turnIndex;
+      currentBoxIndex = box;
+      renderStory([]);
+    });
+
+    function renderStory(story) {
+      const container = document.getElementById("storyContainer");
+      container.innerHTML = "";
+      story.forEach((item, idx) => {
+        const div = document.createElement("div");
+        div.className = "box";
+        div.style.backgroundColor = item.color;
+        div.innerText = `[${item.playerName}]: ${item.text}`;
+        container.appendChild(div);
+      });
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function submitText() {
+      const box = document.getElementById("inputBox");
+      const text = box.value;
+      if (text.trim()) {
+        socket.emit("submitText", text);
+        box.value = "";
+      }
+    }
+
+    socket.on("storyUpdate", ({ story, turnIndex, currentBoxIndex: box }) => {
+      currentTurn = turnIndex;
+      currentBoxIndex = box;
+      renderStory(story);
+    });
+
+    function voteToEnd() {
+      socket.emit("voteToEnd");
+    }
+
+    socket.on("voteInitiated", () => {
+      document.getElementById("voteButtons").style.display = "block";
+    });
+
+    socket.on("voteCancelled", () => {
+      document.getElementById("voteButtons").style.display = "none";
+    });
+
+    function castVote(choice) {
+      socket.emit("castVote", choice);
+      document.getElementById("voteButtons").style.display = "none";
+    }
+
+    socket.on("gameEnded", (story) => {
+      document.getElementById("game").style.display = "none";
+      document.getElementById("finalStory").style.display = "block";
+      const list = document.getElementById("storyList");
+      list.innerHTML = "";
+      story.forEach(item => {
+        const li = document.createElement("li");
+        li.innerText = `[${item.playerName}]: ${item.text}`;
+        list.appendChild(li);
+      });
+    });
+
+    function restartGame() {
+      socket.emit("restartGame");
+    }
+
+    socket.on("gameRestarted", () => {
+      location.reload();
+    });
+  </script>
+</body>
+</html>
