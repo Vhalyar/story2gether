@@ -19,6 +19,10 @@ function resetGame() {
   players.forEach(p => delete p.turnOrder);
 }
 
+function randomizeColor() {
+  const newColor = "#" + Math.floor(Math.random() * 16777215).toString(16).padStart(6, "0");
+  socket.emit("updateColor", newColor);
+}
 
 
 io.on("connection", (socket) => {
