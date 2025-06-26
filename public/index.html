@@ -163,9 +163,19 @@
       socket.emit("restartGame");
     }
 
-    socket.on("gameRestarted", () => {
-      location.reload();
-    });
+    socket.on("gameRestarted", ({ players: newPlayers, turnIndex: newIndex, story }) => {
+  players = newPlayers;
+  const me = players.find(p => p.name === myName);
+  if (me) myTurnOrder = me.turnOrder;
+  currentTurn = newIndex;
+
+  // Hide end screen, show game screen again
+  document.getElementById("endScreen").style.display = "none";
+  document.getElementById("game").style.display = "block";
+
+  renderStory(story);
+});
+
   </script>
 </body>
 </html>
