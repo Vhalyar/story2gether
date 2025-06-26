@@ -19,12 +19,6 @@ function resetGame() {
   players.forEach(p => delete p.turnOrder);
 }
 
-function randomizeColor() {
-  const newColor = "#" + Math.floor(Math.random() * 16777215).toString(16).padStart(6, "0");
-  socket.emit("updateColor", newColor);
-}
-
-
 io.on("connection", (socket) => {
   socket.on("setName", (name) => {
     if (!name || players.find(p => p.name === name)) return;
@@ -78,15 +72,20 @@ io.on("connection", (socket) => {
     }
   });
 
-socket.on("restartGame", () => {
-  resetGame();
-  const shuffled = [...players].sort(() => 0.5 - Math.random());
-  shuffled.forEach((p, i) => { p.turnOrder = i; });
-  turnIndex = 0;
-  io.emit("gameRestarted", { players: shuffled, turnIndex, story });
-});
+  socket.on("restartGame", () => {
+    resetGame();
+    const shuffled = [...players].sort(() => 0.5 - Math.random());
+    shuffled.forEach((p, i) => { p.turnOrder = i; });
+    turnIndex = 0;
+    io.emit("gameRestarted", { players: shuffled, turnIndex, story });
+  });
 
-
+  socket.on("updateColor", (newColor) => {
+    const player = players.find(p => p.id === socket.id);
+    if (!player) return;
+    player.color = newColor;
+    io.emit("playersUpdate", players);
+  });
 
   socket.on("disconnect", () => {
     players = players.filter(p => p.id !== socket.id);
