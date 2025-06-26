@@ -51,6 +51,11 @@
     let myName = null;
     let players = [];
 
+function randomizeColor() {
+  const newColor = "#" + Math.floor(Math.random() * 16777215).toString(16).padStart(6, "0");
+  socket.emit("updateColor", newColor);
+}
+
     function confirmName() {
       const name = document.getElementById("nameInput").value.trim();
       if (name) socket.emit("setName", name);
