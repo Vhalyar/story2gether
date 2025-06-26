@@ -16,11 +16,9 @@ function resetGame() {
   turnIndex = 0;
   voteInProgress = false;
   votes = {};
-  players.forEach(p => {
-    p.ready = false;
-    delete p.turnOrder;
-  });
+  players.forEach(p => delete p.turnOrder);
 }
+
 
 
 io.on("connection", (socket) => {
@@ -76,11 +74,14 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("restartGame", () => {
+socket.on("restartGame", () => {
   resetGame();
-  io.emit("gameRestarted");
-  io.emit("playersUpdate", players);
+  const shuffled = [...players].sort(() => 0.5 - Math.random());
+  shuffled.forEach((p, i) => { p.turnOrder = i; });
+  turnIndex = 0;
+  io.emit("gameRestarted", { players: shuffled, turnIndex, story });
 });
+
 
 
   socket.on("disconnect", () => {
