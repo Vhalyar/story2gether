@@ -22,7 +22,7 @@ function resetGame() {
 io.on("connection", (socket) => {
   socket.on("setName", (name) => {
     if (!name || players.find(p => p.name === name)) return;
-    const color = "#" + Math.floor(Math.random()*16777215).toString(16);
+    const color = "#" + Math.floor(Math.random() * 16777215).toString(16).padStart(6, "0");
     const player = { id: socket.id, name, color, ready: false };
     players.push(player);
     socket.emit("playerData", player);

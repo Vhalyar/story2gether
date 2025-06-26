@@ -11,12 +11,11 @@
   </style>
 </head>
 <body>
-<div id="nameScreen">
-  <h2>Enter your name</h2>
-  <input id="nameInput" placeholder="Enter your name" />
-  <button onclick="confirmName()">Confirm</button>
-</div>
-
+  <div id="nameScreen">
+    <h2>Enter your name</h2>
+    <input id="nameInput" placeholder="Enter your name" />
+    <button onclick="confirmName()">Confirm</button>
+  </div>
 
   <div id="lobby" style="display:none;">
     <h2>Lobby</h2>
@@ -46,6 +45,9 @@
     const socket = io();
     let myTurnOrder = null;
     let currentTurn = 0;
+    let myColor = null;
+    let myName = null;
+    let players = [];
 
     function confirmName() {
       const name = document.getElementById("nameInput").value.trim();
@@ -53,11 +55,14 @@
     }
 
     socket.on("playerData", (player) => {
+      myColor = player.color;
+      myName = player.name;
       document.getElementById("nameScreen").style.display = "none";
       document.getElementById("lobby").style.display = "block";
     });
 
-    socket.on("playersUpdate", (players) => {
+    socket.on("playersUpdate", (updatedPlayers) => {
+      players = updatedPlayers;
       document.getElementById("playersList").innerHTML = players.map(p =>
         `<div style="color:${p.color}">${p.name} ${p.ready ? '[READY]' : ''}</div>`
       ).join("");
@@ -67,8 +72,9 @@
       socket.emit("toggleReady");
     }
 
-    socket.on("gameStart", ({ players, turnIndex, story }) => {
-      const me = players.find(p => p.id === socket.id);
+    socket.on("gameStart", ({ players: gamePlayers, turnIndex, story }) => {
+      players = gamePlayers;
+      const me = players.find(p => p.name === myName);
       if (me) myTurnOrder = me.turnOrder;
       currentTurn = turnIndex;
       document.getElementById("lobby").style.display = "none";
@@ -79,6 +85,7 @@
     function renderStory(story) {
       const storyDiv = document.getElementById("story");
       storyDiv.innerHTML = "";
+
       story.forEach(entry => {
         const box = document.createElement("div");
         box.className = "box";
@@ -89,8 +96,13 @@
 
       const newBox = document.createElement("div");
       newBox.className = "box";
+
+      const activePlayer = players.find(p => p.turnOrder === currentTurn);
+
       if (myTurnOrder === currentTurn) {
+        newBox.style.backgroundColor = myColor;
         const input = document.createElement("textarea");
+        input.id = "inputBox";
         input.style.width = "100%";
         input.style.height = "50px";
         input.addEventListener("keydown", (e) => {
@@ -105,8 +117,10 @@
         });
         newBox.appendChild(input);
       } else {
-        newBox.textContent = "[Another player] is writing...";
+        newBox.style.backgroundColor = activePlayer?.color || "#eee";
+        newBox.textContent = `[${activePlayer?.name || "Someone"}] is writing...`;
       }
+
       storyDiv.appendChild(newBox);
       storyDiv.scrollTop = storyDiv.scrollHeight;
     }
