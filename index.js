@@ -12,12 +12,16 @@ let voteInProgress = false;
 let votes = {};
 
 function resetGame() {
-  players.forEach(p => p.ready = false);
   story = [];
   turnIndex = 0;
   voteInProgress = false;
   votes = {};
+  players.forEach(p => {
+    p.ready = false;
+    delete p.turnOrder;
+  });
 }
+
 
 io.on("connection", (socket) => {
   socket.on("setName", (name) => {
@@ -73,10 +77,11 @@ io.on("connection", (socket) => {
   });
 
   socket.on("restartGame", () => {
-    resetGame();
-    io.emit("gameRestarted");
-    io.emit("playersUpdate", players);
-  });
+  resetGame();
+  io.emit("gameRestarted");
+  io.emit("playersUpdate", players);
+});
+
 
   socket.on("disconnect", () => {
     players = players.filter(p => p.id !== socket.id);
