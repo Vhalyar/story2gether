@@ -12,10 +12,6 @@ let currentBoxIndex = 0;
 let voteInProgress = false;
 let votes = {};
 
-function getNextTurnIndex() {
-  return (turnIndex + 1) % players.length;
-}
-
 function resetGame() {
   players = [];
   turnIndex = 0;
@@ -25,13 +21,17 @@ function resetGame() {
   votes = {};
 }
 
+function getNextTurnIndex() {
+  return (turnIndex + 1) % players.length;
+}
+
 io.on("connection", (socket) => {
   socket.on("setName", (name) => {
     if (!name || players.find(p => p.name === name)) return;
     const color = "#" + Math.floor(Math.random() * 16777215).toString(16);
-    const player = { id: socket.id, name, color };
+    const player = { id: socket.id, name, color, ready: false };
     players.push(player);
-    socket.emit("playerData", { ...player, turnIndex: players.length - 1 });
+    socket.emit("playerData", { ...player });
     io.emit("playersUpdate", players);
   });
 
@@ -44,7 +44,13 @@ io.on("connection", (socket) => {
         // Randomize turn order
         players = players.sort(() => 0.5 - Math.random());
         turnIndex = 0;
-        io.emit("gameStart", { players, turnIndex, currentBoxIndex });
+        currentBoxIndex = 0;
+        io.emit("gameStart", {
+          players,
+          turnIndex,
+          currentBoxIndex,
+          story
+        });
       }
     }
   });
@@ -52,10 +58,16 @@ io.on("connection", (socket) => {
   socket.on("submitText", (text) => {
     const player = players[turnIndex];
     if (!player || socket.id !== player.id || voteInProgress) return;
+
     story.push({ text, playerName: player.name, color: player.color });
     turnIndex = getNextTurnIndex();
     currentBoxIndex++;
-    io.emit("storyUpdate", { story, turnIndex, currentBoxIndex });
+
+    io.emit("storyUpdate", {
+      story,
+      turnIndex,
+      currentBoxIndex
+    });
   });
 
   socket.on("voteToEnd", () => {
